@@ -21,9 +21,10 @@ public class Process extends UntypedAbstractActor {
     private final int N;//number of processes
     private final int id;//id of current process
     private Members processes;//other processes' references
-    private Integer proposal;
-    private int value;
-    private int timestamp;
+    private int LocalValue;
+    private int LocalTS;
+    private int TS = 0;
+    private int r = 0;
     private boolean failed = false;
 
     public Process(int ID, int nb) {
