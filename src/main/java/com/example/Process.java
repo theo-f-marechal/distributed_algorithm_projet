@@ -68,11 +68,10 @@ public class Process extends UntypedAbstractActor {
             } else if (message instanceof WriteMsg) {
                 WriteMsg m = (WriteMsg) message;
                 this.writeReceived(m.v);
-
             } else if (message instanceof ReadMsg) {
                 ReadMsg m = (ReadMsg) message;
                 this.readReceived(m.ballot, getSender());
-            }else if (message instanceof FailMsg){
+            } else if (message instanceof FailMsg){
                 this.failed = true;
                 log.info("Process " + self().path().name() + " has successfully failed.");
             }
