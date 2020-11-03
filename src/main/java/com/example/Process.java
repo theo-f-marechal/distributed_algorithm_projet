@@ -21,8 +21,8 @@ public class Process extends UntypedAbstractActor {
     private final int N;//number of processes
     private final int id;//id of current process
     private Members processes;//other processes' references
-    private int LocalValue;
-    private int LocalTS;
+    private int localValue = 0;
+    private int localTS = 0;
     private int TS = 0;
     private int r = 0;
     private boolean failed = false;
@@ -41,21 +41,29 @@ public class Process extends UntypedAbstractActor {
      * Static function creating actor
      */
     public static Props createActor(int ID, int nb) {
-        return Props.create(Process.class, () -> {
-            return new Process(ID, nb);
-        });
+        return Props.create(Process.class, () -> new Process(ID, nb));
     }
     
     
-    private void readReceived(Object ballot, ActorRef sender) {
+    private void readReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if(!this.failed) {
-            log.info("read request received " + self().path().name());
+            log.info("read request received " + self().path().name() + " From " + sender.path().name());
+            ArrayList<Integer> message = new ArrayList<>();
+            message.add(localValue);
+            message.add(localTS);
+            message.add(ballot.get(0));
+            sender.tell(message, self());
         }
     }
     
-    private void writeReceived(Object v) {
+    private void writeReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if(!this.failed) {
-            log.info("write request received " + self().path().name());
+            log.info("write request received " + self().path().name() + " From " + sender.path().name());
+            if (ballot.get(1) > localTS ||
+                    (ballot.get(1) == localTS && ballot.get(0) > localValue)){
+                localValue = ballot.get(0);
+                localTS = ballot.get(1);
+            }
         }
     }
     
@@ -67,7 +75,7 @@ public class Process extends UntypedAbstractActor {
                 log.info("p" + self().path().name() + " received processes info");
             } else if (message instanceof WriteMsg) {
                 WriteMsg m = (WriteMsg) message;
-                this.writeReceived(m.v);
+                this.writeReceived(m.ballot, getSender());
             } else if (message instanceof ReadMsg) {
                 ReadMsg m = (ReadMsg) message;
                 this.readReceived(m.ballot, getSender());

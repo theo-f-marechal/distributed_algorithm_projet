@@ -1,12 +1,13 @@
 package com.example.msg;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class WriteMsg implements Serializable{
         private static final long serialVersionUID = 1L;
-        public Object v;
+        public ArrayList<Integer> ballot;
 
-        public void WriteMsg(Object v) {
-                this.v = v;
+        public void WriteMsg(ArrayList<Integer> ballot) {
+                this.ballot = ballot;
         }
 }
