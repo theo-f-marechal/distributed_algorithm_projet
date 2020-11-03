@@ -7,7 +7,7 @@ public class ReadMsg implements Serializable {
         private static final long serialVersionUID = 1L;
         public ArrayList<Integer> ballot;
 
-        public void msg_read(ArrayList<Integer> ballot) {
+        public ReadMsg(ArrayList<Integer> ballot) {
                 this.ballot = ballot;
         }
 }
