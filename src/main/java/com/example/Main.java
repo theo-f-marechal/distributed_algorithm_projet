@@ -25,16 +25,15 @@ public class Main {
     }
     System.out.println(" ref " + references.toString());
 
-    fail_x_process(references);
-
     //give each process a view of all the other processes
     MembersMsg m = new MembersMsg(references);
     for (ActorRef actor : references) {
       actor.tell(m, ActorRef.noSender());
     }
 
-    //OfconsProposerMsg opm = new OfconsProposerMsg(100);
-    //references.get(0).tell(opm, ActorRef.noSender());
+    fail_x_process(references);
+
+    timeToLaunch(references);
 
     terminate(system);
   }
@@ -72,7 +71,7 @@ public class Main {
     }
   }
 
-  public static void timeToLunch(ArrayList<ActorRef> references){
+  public static void timeToLaunch(ArrayList<ActorRef> references){
     for (ActorRef i : references){
       LaunchMsg message = new LaunchMsg();
       i.tell(message, ActorRef.noSender());

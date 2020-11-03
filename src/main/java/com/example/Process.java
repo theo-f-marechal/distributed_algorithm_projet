@@ -72,7 +72,7 @@ public class Process extends UntypedAbstractActor {
     
     private void readReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if(!this.failed) {
-            log.info("read request received " + self().path().name() + " From " + sender.path().name());
+            log.info(self().path().name() + " received read request from " + sender.path().name());
             ArrayList<Integer> newballot = new ArrayList<>();
             newballot.add(localValue);
             newballot.add(localTS);
@@ -84,7 +84,7 @@ public class Process extends UntypedAbstractActor {
     
     private void writeReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if(!this.failed) {
-            log.info("write request received " + self().path().name() + " From " + sender.path().name());
+            log.info(self().path().name() + " received write request from " + sender.path().name());
             if (ballot.get(1) > localTS ||
                     (ballot.get(1) == localTS && ballot.get(0) > localValue)){
                 localValue = ballot.get(0);
@@ -103,7 +103,7 @@ public class Process extends UntypedAbstractActor {
             if (request_sequence_number == r) {
                 this.ReadAnswers.add(ballot);
             }
-            log.info("answer to read request received " + self().path().name() + " From " + sender.path().name());
+            log.info(self().path().name() + " received an answer to a read request from " + sender.path().name());
         }
     }
 
@@ -113,7 +113,39 @@ public class Process extends UntypedAbstractActor {
             if (request_sequence_number == r) {
                 this.WriteAnswers.add(ballot);
             }
-            log.info("answer to write request received " + self().path().name() + " From " + sender.path().name());
+            log.info(self().path().name() + " received an answer to a write request from " + sender.path().name());
+        }
+    }
+
+    public void onReceive(Object message) throws InterruptedException {
+        if (!this.failed) {
+            if (message instanceof MembersMsg) {//save the system's info
+                processes = (MembersMsg) message;
+                log.info(self().path().name() + " received processes info");
+
+            } else if (message instanceof WriteMsg) {
+                WriteMsg m = (WriteMsg) message;
+                this.writeReceived(m.ballot, getSender());
+
+            } else if (message instanceof ReadMsg) {
+                ReadMsg m = (ReadMsg) message;
+                this.readReceived(m.ballot, getSender());
+
+            } else if (message instanceof AnswerReadMsg){
+                AnswerReadMsg m = (AnswerReadMsg) message;
+                this.answerReadReceived(m.ballot, getSender());
+
+            } else if (message instanceof AnswerWriteMsg){
+                AnswerWriteMsg m = (AnswerWriteMsg) message;
+                this.answerWriteReceived(m.ballot, getSender());
+
+            } else if (message instanceof FailMsg){
+                this.failed = true;
+                log.info(self().path().name() + " has successfully failed.");
+
+            }else if (message instanceof LaunchMsg){
+                this.Launch();
+            }
         }
     }
 
@@ -186,46 +218,16 @@ public class Process extends UntypedAbstractActor {
         return false;
     }
 
-    // Lunching
+    // Launching
 
     private void Launch() throws InterruptedException {
         if (!this.failed) {
             int value = 2;
-            write(value);
-            log.info(self().path().name() + " wrote " + value + " (almost) everywhere");
+            boolean succes = write(value);
+            log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
             int read_value = read();
             log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
         }
     }
-    
-    public void onReceive(Object message) throws InterruptedException {
-        if (!this.failed) {
-            if (message instanceof MembersMsg) {//save the system's info
-                processes = (MembersMsg) message;
-                log.info("p" + self().path().name() + " received processes info");
 
-            } else if (message instanceof WriteMsg) {
-                WriteMsg m = (WriteMsg) message;
-                this.writeReceived(m.ballot, getSender());
-
-            } else if (message instanceof ReadMsg) {
-                ReadMsg m = (ReadMsg) message;
-                this.readReceived(m.ballot, getSender());
-
-            } else if (message instanceof AnswerReadMsg){
-                AnswerReadMsg m = (AnswerReadMsg) message;
-                this.answerReadReceived(m.ballot, getSender());
-
-            } else if (message instanceof AnswerWriteMsg){
-                AnswerWriteMsg m = (AnswerWriteMsg) message;
-                this.answerWriteReceived(m.ballot, getSender());
-
-            } else if (message instanceof FailMsg){
-                this.failed = true;
-                log.info("Process " + self().path().name() + " has successfully failed.");
-            }else if (message instanceof LaunchMsg){
-                this.Launch();
-            }
-        }
-    }
 }
