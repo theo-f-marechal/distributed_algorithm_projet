@@ -10,11 +10,11 @@ public class MembersMsg {
 
     public MembersMsg(ArrayList<ActorRef> references) {
         this.references = references;
-        String s="[ ";
+        StringBuilder s= new StringBuilder("[ ");
         for (ActorRef a : references){
-            s += a.path().name()+" ";
+            s.append(a.path().name()).append(" ");
         }
-        s+="]";    
-        data=s;
+        s.append("]");
+        data= s.toString();
     }
 }

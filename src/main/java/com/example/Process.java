@@ -185,8 +185,20 @@ public class Process extends UntypedAbstractActor {
         }
         return false;
     }
+
+    // Lunching
+
+    private void Launch() throws InterruptedException {
+        if (!this.failed) {
+            int value = 2;
+            write(value);
+            log.info(self().path().name() + " wrote " + value + " (almost) everywhere");
+            int read_value = read();
+            log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
+        }
+    }
     
-    public void onReceive(Object message) {
+    public void onReceive(Object message) throws InterruptedException {
         if (!this.failed) {
             if (message instanceof MembersMsg) {//save the system's info
                 processes = (MembersMsg) message;
@@ -211,6 +223,8 @@ public class Process extends UntypedAbstractActor {
             } else if (message instanceof FailMsg){
                 this.failed = true;
                 log.info("Process " + self().path().name() + " has successfully failed.");
+            }else if (message instanceof LaunchMsg){
+                this.Launch();
             }
         }
     }

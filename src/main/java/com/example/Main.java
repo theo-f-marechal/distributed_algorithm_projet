@@ -3,11 +3,12 @@ package com.example;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import com.example.msg.FailMsg;
+import com.example.msg.LaunchMsg;
 import com.example.msg.MembersMsg;
 
 import java.util.ArrayList;
 
-public class AkkaQuickstart {
+public class Main {
 
   public static int N = 10;
 
@@ -68,6 +69,13 @@ public class AkkaQuickstart {
       e.printStackTrace();
     } finally {
       system.terminate();
+    }
+  }
+
+  public static void timeToLunch(ArrayList<ActorRef> references){
+    for (ActorRef i : references){
+      LaunchMsg message = new LaunchMsg();
+      i.tell(message, ActorRef.noSender());
     }
   }
 }
