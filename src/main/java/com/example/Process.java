@@ -40,6 +40,8 @@ public class Process extends UntypedAbstractActor {
         return Props.create(Process.class, () -> new Process(ID, nb));
     }
 
+    //auxiliary functions
+
     private ArrayList<Integer> ReadAnswerMax(){
         int max_v = this.ReadAnswers.get(0).ballot.get(0);;
         int max_t = this.ReadAnswers.get(0).ballot.get(1);
@@ -67,7 +69,7 @@ public class Process extends UntypedAbstractActor {
         return true;
     }
 
-    // on received foncion
+    // on received functions
     
     private void readReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if(!this.failed) {
@@ -95,6 +97,13 @@ public class Process extends UntypedAbstractActor {
         }
     }
 
+    private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
+
+    }
+
+    private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender){
+
+    }
 
     //read write
 
@@ -118,22 +127,49 @@ public class Process extends UntypedAbstractActor {
             WriteMsg messageW = new WriteMsg(ballot);
 
             this.WriteAnswers.clear();
-            for (ActorRef i : processes.references) { //envoi des mesage à tout les process
+            for (ActorRef i : processes.references) { //send msg to all process
                 i.tell(messageW, self());
             }
             while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
                 wait(10);
             }
-            if (!WriteAnswerValidate())
+            if (!WriteAnswerValidate()) //check that all the msg were received
                 return -1;
             return ballot.get(0); // return vm
         }
         return -1;
     }
 
-    public boolean write(){
+    public boolean write(int value) throws InterruptedException {
         if(!this.failed) {
+            r++;
+            ArrayList<Integer> ballot = new ArrayList<>();
+            ballot.add(r);
+            ReadMsg messageR = new ReadMsg(ballot);
 
+            this.ReadAnswers.clear();
+            for (ActorRef i : processes.references) { //send msg to all process
+                i.tell(messageR, self());
+            }
+            while (this.ReadAnswers.size() < N/2){ //wait for more a majority to answer
+                wait(10);
+            }
+
+            t = ReadAnswerMax().get(1) + 1; // tm + 1
+
+            ballot.clear();
+            ballot.add(value,t);
+            WriteMsg messageW = new WriteMsg(ballot);
+
+            this.WriteAnswers.clear();
+            for (ActorRef i : processes.references) { //send msg to all process
+                i.tell(messageW, self());
+            }
+            while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
+                wait(10);
+            }
+            if (!WriteAnswerValidate()) //check that all the msg were received
+                return false;
             return true;
         }
         return false;
@@ -145,12 +181,23 @@ public class Process extends UntypedAbstractActor {
                 Members m = (Members) message;
                 processes = m;
                 log.info("p" + self().path().name() + " received processes info");
+
             } else if (message instanceof WriteMsg) {
                 WriteMsg m = (WriteMsg) message;
                 this.writeReceived(m.ballot, getSender());
+
             } else if (message instanceof ReadMsg) {
                 ReadMsg m = (ReadMsg) message;
                 this.readReceived(m.ballot, getSender());
+
+            } else if (message instanceof AnswerReadMsg){
+                AnswerReadMsg m = (AnswerReadMsg) message;
+                this.answerReadReceived(m.ballot, getSender());
+
+            } else if (message instanceof AnswerWriteMsg){
+                AnswerWriteMsg m = (AnswerWriteMsg) message;
+                this.answerWriteReceived(m.ballot, getSender());
+
             } else if (message instanceof FailMsg){
                 this.failed = true;
                 log.info("Process " + self().path().name() + " has successfully failed.");
