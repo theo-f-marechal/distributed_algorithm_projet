@@ -8,8 +8,13 @@ import akka.event.LoggingAdapter;
 import com.example.msg.*;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Process extends UntypedAbstractActor {
+    Lock lockR = new LockReadAnswer();
+    Lock lockW = new LockWriteAnswer();
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);// Logger attached to actor
     private final int N;//number of processes
     private final int id;//id of current process
@@ -42,21 +47,27 @@ public class Process extends UntypedAbstractActor {
     //auxiliary functions
 
     private ArrayList<Integer> ReadAnswerMax(){
-        int max_v = this.ReadAnswers.get(0).get(0);
-        int max_t = this.ReadAnswers.get(0).get(1);
+        if (!this.ReadAnswers.isEmpty()) {
+            int max_v = this.ReadAnswers.get(0).get(0);
+            int max_t = this.ReadAnswers.get(0).get(1);
 
-        for(int i = 1; i < this.ReadAnswers.size(); i++){
-            int i_v = this.ReadAnswers.get(i).get(0);
-            int i_t = this.ReadAnswers.get(i).get(1);
-            if (max_t < i_t || (max_t == i_t && max_v < i_v)){
-                max_t = i_t;
-                max_v = i_v;
+            for (int i = 1; i < this.ReadAnswers.size(); i++) {
+                int i_v = this.ReadAnswers.get(i).get(0);
+                int i_t = this.ReadAnswers.get(i).get(1);
+                if (max_t < i_t || (max_t == i_t && max_v < i_v)) {
+                    max_t = i_t;
+                    max_v = i_v;
+                }
             }
-        }
 
+            ArrayList<Integer> max_v_t = new ArrayList<>();
+            max_v_t.add(max_v);
+            max_v_t.add(max_t);
+            return max_v_t;
+        }
         ArrayList<Integer> max_v_t = new ArrayList<>();
-        max_v_t.add(max_v);
-        max_v_t.add(max_t);
+        max_v_t.add(-1);
+        max_v_t.add(-1);
         return max_v_t;
     }
 
@@ -99,11 +110,13 @@ public class Process extends UntypedAbstractActor {
 
     private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
         if (!failed) {
-            int request_sequence_number = ballot.get(2);
-            if (request_sequence_number == r) {
-                this.ReadAnswers.add(ballot);
-            }
-            log.info(self().path().name() + " received an answer to a read request from " + sender.path().name());
+                int request_sequence_number = ballot.get(2);
+                if (request_sequence_number == r) {
+                    this.ReadAnswers.add(ballot);
+                }
+                log.info(self().path().name() + " received an answer to a read request from " + sender.path().name());
+                if (this.ReadAnswers.size() < N/2)
+                    lockR.unlock();
         }
     }
 
@@ -114,10 +127,121 @@ public class Process extends UntypedAbstractActor {
                 this.WriteAnswers.add(ballot);
             }
             log.info(self().path().name() + " received an answer to a write request from " + sender.path().name());
+            if (this.WriteAnswers.size() < N/2)
+                lockW.unlock();
         }
     }
 
-    public void onReceive(Object message) throws InterruptedException {
+    //read write
+
+    public int read() {
+        if(!this.failed) {
+            r++;
+            ArrayList<Integer> ballot = new ArrayList<>();
+            ballot.add(r);
+            ReadMsg messageR = new ReadMsg(ballot);
+
+            this.ReadAnswers.clear();
+            for (ActorRef i : processes.references) { //envoi des mesage à tout les process
+                if (i == self())
+                    continue;
+                i.tell(messageR, self());
+            }
+            /*while (this.ReadAnswers.size() < N/2){ //wait for more a majority to answer
+                try {
+                    self().wait();
+                } catch (InterruptedException ignored) { }
+            }*/
+            lockR.lock();
+
+            ballot.clear();
+            ballot = ReadAnswerMax(); // [vm;tm]
+            WriteMsg messageW = new WriteMsg(ballot);
+
+            this.WriteAnswers.clear();
+            for (ActorRef i : processes.references) { //send msg to all process
+                if (i == self())
+                    continue;
+                i.tell(messageW, self());
+            }
+            /*while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
+                try {
+                    self().wait();
+                } catch (InterruptedException ignored) { }
+            }*/
+            lockR.lock();
+
+            if (WriteAnswerValidate()) //check that all the msg were received
+                return -1;
+            return ballot.get(0); // return vm
+        }
+        return -1;
+    }
+
+    public boolean write(int value){
+        if(!this.failed) {
+            r++;
+            ArrayList<Integer> ballot = new ArrayList<>();
+            ballot.add(r);
+            ReadMsg messageR = new ReadMsg(ballot);
+
+            this.ReadAnswers.clear();
+            for (ActorRef i : processes.references) { //send msg to all process
+                if (i == self())
+                    continue;
+                i.tell(messageR, self());
+            }
+
+            /*while (this.ReadAnswers.size() < N/2) { //wait for more a majority to answer
+                try {
+                    self().wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }*/
+            lockW.lock();
+
+            t = ReadAnswerMax().get(1) + 1; // tm + 1
+
+            ballot.clear();
+            ballot.add(value);
+            ballot.add(t);
+            WriteMsg messageW = new WriteMsg(ballot);
+
+            this.WriteAnswers.clear();
+            for (ActorRef i : processes.references) { //send msg to all process
+                if (i == self())
+                    continue;
+                i.tell(messageW, self());
+            }
+            /*while (this.WriteAnswers.size() < N/2) { //wait for more a majority to answer
+                try {
+                    self().wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }*/
+            lockW.lock();
+            return !WriteAnswerValidate();
+        }
+        return false;
+    }
+
+    // Launching
+
+    private void Launch() {
+        if (!this.failed) {
+            int value = 2;
+            boolean succes = write(value);
+            log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
+            int read_value = read();
+            log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
+        }
+    }
+
+    // Message receiver
+
+    public void onReceive(Object message) {
         if (!this.failed) {
             if (message instanceof MembersMsg) {//save the system's info
                 processes = (MembersMsg) message;
@@ -146,87 +270,6 @@ public class Process extends UntypedAbstractActor {
             }else if (message instanceof LaunchMsg){
                 this.Launch();
             }
-        }
-    }
-
-    //read write
-
-    public int read() throws InterruptedException {
-        if(!this.failed) {
-            r++;
-            ArrayList<Integer> ballot = new ArrayList<>();
-            ballot.add(r);
-            ReadMsg messageR = new ReadMsg(ballot);
-
-            this.ReadAnswers.clear();
-            for (ActorRef i : processes.references) { //envoi des mesage à tout les process
-                i.tell(messageR, self());
-            }
-            while (this.ReadAnswers.size() < N/2){ //wait for more a majority to answer
-                wait(10);
-            }
-
-            ballot.clear();
-            ballot = ReadAnswerMax(); // [vm;tm]
-            WriteMsg messageW = new WriteMsg(ballot);
-
-            this.WriteAnswers.clear();
-            for (ActorRef i : processes.references) { //send msg to all process
-                i.tell(messageW, self());
-            }
-            while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
-                wait(10);
-            }
-            if (WriteAnswerValidate()) //check that all the msg were received
-                return -1;
-            return ballot.get(0); // return vm
-        }
-        return -1;
-    }
-
-    public boolean write(int value) throws InterruptedException {
-        if(!this.failed) {
-            r++;
-            ArrayList<Integer> ballot = new ArrayList<>();
-            ballot.add(r);
-            ReadMsg messageR = new ReadMsg(ballot);
-
-            this.ReadAnswers.clear();
-            for (ActorRef i : processes.references) { //send msg to all process
-                i.tell(messageR, self());
-            }
-            while (this.ReadAnswers.size() < N/2){ //wait for more a majority to answer
-                wait(10);
-            }
-
-            t = ReadAnswerMax().get(1) + 1; // tm + 1
-
-            ballot.clear();
-            ballot.add(value,t);
-            WriteMsg messageW = new WriteMsg(ballot);
-
-            this.WriteAnswers.clear();
-            for (ActorRef i : processes.references) { //send msg to all process
-                i.tell(messageW, self());
-            }
-            while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
-                wait(10);
-            }
-            //check that all the msg were received
-            return !WriteAnswerValidate();
-        }
-        return false;
-    }
-
-    // Launching
-
-    private void Launch() throws InterruptedException {
-        if (!this.failed) {
-            int value = 2;
-            boolean succes = write(value);
-            log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
-            int read_value = read();
-            log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
         }
     }
 
