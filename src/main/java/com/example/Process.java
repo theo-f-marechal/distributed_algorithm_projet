@@ -6,7 +6,6 @@ import akka.actor.UntypedAbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.example.msg.*;
-import scala.Int;
 
 import java.util.ArrayList;
 
@@ -20,8 +19,8 @@ public class Process extends UntypedAbstractActor {
     private int t = 0;
     private int r = 0;
     private boolean failed = false;
-    private ArrayList<AnswerReadMsg> ReadAnswers = new ArrayList<>();
-    private ArrayList<AnswerWriteMsg> WriteAnswers = new ArrayList<>();
+    private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
+    private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
 
     public Process(int ID, int nb) {
         N = nb;
@@ -43,12 +42,12 @@ public class Process extends UntypedAbstractActor {
     //auxiliary functions
 
     private ArrayList<Integer> ReadAnswerMax(){
-        int max_v = this.ReadAnswers.get(0).ballot.get(0);;
-        int max_t = this.ReadAnswers.get(0).ballot.get(1);
+        int max_v = this.ReadAnswers.get(0).get(0);
+        int max_t = this.ReadAnswers.get(0).get(1);
 
         for(int i = 1; i < this.ReadAnswers.size(); i++){
-            int i_v = this.ReadAnswers.get(i).ballot.get(0);
-            int i_t = this.ReadAnswers.get(i).ballot.get(1);
+            int i_v = this.ReadAnswers.get(i).get(0);
+            int i_t = this.ReadAnswers.get(i).get(1);
             if (max_t < i_t || (max_t == i_t && max_v < i_v)){
                 max_t = i_t;
                 max_v = i_v;
@@ -63,10 +62,10 @@ public class Process extends UntypedAbstractActor {
 
     private boolean WriteAnswerValidate(){
         for ( int i = 0; i < this.ReadAnswers.size(); i++){
-            if (this.WriteAnswers.get(i).ballot.get(2) != 1)
-                return false;
+            if (this.WriteAnswers.get(i).get(2) != 1)
+                return true;
         }
-        return true;
+        return false;
     }
 
     // on received functions
@@ -92,17 +91,30 @@ public class Process extends UntypedAbstractActor {
                 localTS = ballot.get(1);
             }
             ballot.add(1);
+            ballot.add(r); // may be could only answer with [ask,r]
             AnswerWriteMsg message = new AnswerWriteMsg(ballot);
             sender.tell(message,self());
         }
     }
 
     private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
-
+        if (!failed) {
+            int request_sequence_number = ballot.get(2);
+            if (request_sequence_number == r) {
+                this.ReadAnswers.add(ballot);
+            }
+            log.info("answer to read request received " + self().path().name() + " From " + sender.path().name());
+        }
     }
 
-    private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender){
-
+    private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender) {
+        if (!failed) {
+            int request_sequence_number = ballot.get(3);
+            if (request_sequence_number == r) {
+                this.WriteAnswers.add(ballot);
+            }
+            log.info("answer to write request received " + self().path().name() + " From " + sender.path().name());
+        }
     }
 
     //read write
@@ -133,7 +145,7 @@ public class Process extends UntypedAbstractActor {
             while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
                 wait(10);
             }
-            if (!WriteAnswerValidate()) //check that all the msg were received
+            if (WriteAnswerValidate()) //check that all the msg were received
                 return -1;
             return ballot.get(0); // return vm
         }
@@ -168,18 +180,16 @@ public class Process extends UntypedAbstractActor {
             while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
                 wait(10);
             }
-            if (!WriteAnswerValidate()) //check that all the msg were received
-                return false;
-            return true;
+            //check that all the msg were received
+            return !WriteAnswerValidate();
         }
         return false;
     }
     
-    public void onReceive(Object message) throws Throwable {
+    public void onReceive(Object message) {
         if (!this.failed) {
             if (message instanceof Members) {//save the system's info
-                Members m = (Members) message;
-                processes = m;
+                processes = (Members) message;
                 log.info("p" + self().path().name() + " received processes info");
 
             } else if (message instanceof WriteMsg) {
