@@ -1,14 +1,14 @@
-package com.example;
+package com.example.msg;
 import akka.actor.ActorRef;
 import java.util.ArrayList;
 /**
  * Class containing the processes' references
  */
-public class Members {
+public class MembersMsg {
             public final ArrayList<ActorRef> references;
             public final String data;
 
-    public Members(ArrayList<ActorRef> references) {
+    public MembersMsg(ArrayList<ActorRef> references) {
         this.references = references;
         String s="[ ";
         for (ActorRef a : references){

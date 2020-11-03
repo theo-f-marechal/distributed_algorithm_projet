@@ -13,7 +13,7 @@ public class Process extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);// Logger attached to actor
     private final int N;//number of processes
     private final int id;//id of current process
-    private Members processes;//other processes' references
+    private MembersMsg processes;//other processes' references
     private int localValue = 0;
     private int localTS = 0;
     private int t = 0;
@@ -188,8 +188,8 @@ public class Process extends UntypedAbstractActor {
     
     public void onReceive(Object message) {
         if (!this.failed) {
-            if (message instanceof Members) {//save the system's info
-                processes = (Members) message;
+            if (message instanceof MembersMsg) {//save the system's info
+                processes = (MembersMsg) message;
                 log.info("p" + self().path().name() + " received processes info");
 
             } else if (message instanceof WriteMsg) {

@@ -3,6 +3,7 @@ package com.example;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import com.example.msg.FailMsg;
+import com.example.msg.MembersMsg;
 
 import java.util.ArrayList;
 
@@ -26,7 +27,7 @@ public class AkkaQuickstart {
     fail_x_process(references);
 
     //give each process a view of all the other processes
-    Members m = new Members(references);
+    MembersMsg m = new MembersMsg(references);
     for (ActorRef actor : references) {
       actor.tell(m, ActorRef.noSender());
     }
