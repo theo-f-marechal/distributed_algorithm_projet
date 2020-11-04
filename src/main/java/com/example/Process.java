@@ -87,7 +87,7 @@ public class Process extends UntypedAbstractActor {
             ArrayList<Integer> newballot = new ArrayList<>();
             newballot.add(localValue);
             newballot.add(localTS);
-            newballot.add(ballot.get(0)); // r' n'est jamais utilisé
+            newballot.add(ballot.get(0));
             AnswerReadMsg message = new AnswerReadMsg(newballot);
             sender.tell(message, self());
         }
@@ -101,9 +101,12 @@ public class Process extends UntypedAbstractActor {
                 localValue = ballot.get(0);
                 localTS = ballot.get(1);
             }
-            ballot.add(1);
-            ballot.add(r); // may be could only answer with [ask,r]
-            AnswerWriteMsg message = new AnswerWriteMsg(ballot);
+            ArrayList<Integer> newballot = new ArrayList<>();
+            newballot.add(ballot.get(0));
+            newballot.add(ballot.get(1));
+            newballot.add(1); //augmentation de la taille des ballot ici
+            newballot.add(r); // may be could only answer with [ask,r]
+            AnswerWriteMsg message = new AnswerWriteMsg(newballot); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
             sender.tell(message,self());
         }
     }
@@ -122,7 +125,7 @@ public class Process extends UntypedAbstractActor {
 
     private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender) {
         if (!failed) {
-            int request_sequence_number = ballot.get(3);
+            int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
             if (request_sequence_number == r) {
                 this.WriteAnswers.add(ballot);
             }
@@ -137,9 +140,9 @@ public class Process extends UntypedAbstractActor {
     public int read() {
         if(!this.failed) {
             r++;
-            ArrayList<Integer> ballot = new ArrayList<>();
-            ballot.add(r);
-            ReadMsg messageR = new ReadMsg(ballot);
+            ArrayList<Integer> ballotR = new ArrayList<>();
+            ballotR.add(r);
+            ReadMsg messageR = new ReadMsg(ballotR);
 
             this.ReadAnswers.clear();
             for (ActorRef i : processes.references) { //envoi des mesage à tout les process
@@ -154,9 +157,9 @@ public class Process extends UntypedAbstractActor {
             }*/
             lockR.lock();
 
-            ballot.clear();
-            ballot = ReadAnswerMax(); // [vm;tm]
-            WriteMsg messageW = new WriteMsg(ballot);
+            ArrayList<Integer> ballotW = new ArrayList<>();
+            ballotW = ReadAnswerMax(); // [vm;tm]
+            WriteMsg messageW = new WriteMsg(ballotW);
 
             this.WriteAnswers.clear();
             for (ActorRef i : processes.references) { //send msg to all process
@@ -173,7 +176,7 @@ public class Process extends UntypedAbstractActor {
 
             if (WriteAnswerValidate()) //check that all the msg were received
                 return -1;
-            return ballot.get(0); // return vm
+            return ballotW.get(0); // return vm
         }
         return -1;
     }
@@ -181,9 +184,9 @@ public class Process extends UntypedAbstractActor {
     public boolean write(int value){
         if(!this.failed) {
             r++;
-            ArrayList<Integer> ballot = new ArrayList<>();
-            ballot.add(r);
-            ReadMsg messageR = new ReadMsg(ballot);
+            ArrayList<Integer> ballotR = new ArrayList<>();
+            ballotR.add(r);
+            ReadMsg messageR = new ReadMsg(ballotR);
 
             this.ReadAnswers.clear();
             for (ActorRef i : processes.references) { //send msg to all process
@@ -203,10 +206,10 @@ public class Process extends UntypedAbstractActor {
 
             t = ReadAnswerMax().get(1) + 1; // tm + 1
 
-            ballot.clear();
-            ballot.add(value);
-            ballot.add(t);
-            WriteMsg messageW = new WriteMsg(ballot);
+            ArrayList<Integer> ballotW = new ArrayList<>();
+            ballotW.add(value);
+            ballotW.add(t);
+            WriteMsg messageW = new WriteMsg(ballotW);
 
             this.WriteAnswers.clear();
             for (ActorRef i : processes.references) { //send msg to all process
