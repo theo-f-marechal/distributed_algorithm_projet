@@ -6,11 +6,8 @@ import akka.actor.UntypedAbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import com.example.msg.*;
-
 import java.util.ArrayList;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class Process extends UntypedAbstractActor {
     Lock lockR = new LockReadAnswer();
@@ -157,8 +154,7 @@ public class Process extends UntypedAbstractActor {
             }*/
             lockR.lock();
 
-            ArrayList<Integer> ballotW = new ArrayList<>();
-            ballotW = ReadAnswerMax(); // [vm;tm]
+            ArrayList<Integer> ballotW = ReadAnswerMax(); // [vm;tm]
             WriteMsg messageW = new WriteMsg(ballotW);
 
             this.WriteAnswers.clear();
