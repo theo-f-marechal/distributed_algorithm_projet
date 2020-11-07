@@ -55,7 +55,7 @@ public class Process extends UntypedAbstractActor {
     }
 
     // on received functions
-    
+
     private void readReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
         if(!this.failed) {
             log.info(self().path().name() + " received read request from " + sender.path().name());
@@ -67,7 +67,7 @@ public class Process extends UntypedAbstractActor {
             receiver.tell(message, self());
         }
     }
-    
+
     private void writeReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
         if(!this.failed) {
             log.info(self().path().name() + " received write request from " + sender.path().name());
@@ -105,41 +105,36 @@ public class Process extends UntypedAbstractActor {
             }
 
             //wait
-            Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
-            future1.onComplete(new OnComplete<Object>(){
-                public void onComplete(Throwable t, Object result){
-                    try {
-                        // wait for the auxiliary process to answer
-                        AuxiliaryReadAnswerMsg resultR = (AuxiliaryReadAnswerMsg) Await.result(future1, timeout.duration());
+            try {
+                // wait for the auxiliary process to answer
+                AuxiliaryReadAnswerMsg resultR = (AuxiliaryReadAnswerMsg) Await.result(future1, timeout.duration());
 
-                        ArrayList<Integer> ballotW = resultR.ballot; // recover the result sent by auxip1 [vm;tm]
-                        system.stop(auxip1); // close the now useless auxiliary process
-                        ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
+                ArrayList<Integer> ballotW = resultR.ballot; // recover the result sent by auxip1 [vm;tm]
+                system.stop(auxip1); // close the now useless auxiliary process
+                ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
 
-                        WriteMsg messageW = new WriteMsg(ballotW, auxip2);
+                WriteMsg messageW = new WriteMsg(ballotW, auxip2);
 
-                        for (ActorRef i : processes.references) { //send msg to all process
-                            if (i == self())
-                                continue;
-                            i.tell(messageW, self());
-                        }
-                        // wait
-                        Future<Object> future2 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
-                        AuxiliaryWriteAnswerMsg resultW = (AuxiliaryWriteAnswerMsg) Await.result(future2, timeout.duration());
-
-                        system.stop(auxip2);
-
-                        if (resultW.ballot) //check that all the msg were received
-                            return ballotW.get(0);
-                        return -1; // return vm
-
-                    } catch (TimeoutException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                for (ActorRef i : processes.references) { //send msg to all process
+                    if (i == self())
+                        continue;
+                    i.tell(messageW, self());
                 }
-            },system.dispatcher());
+                // wait
+                Future<Object> future2 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
+                AuxiliaryWriteAnswerMsg resultW = (AuxiliaryWriteAnswerMsg) Await.result(future2, timeout.duration());
+
+                system.stop(auxip2);
+
+                if (resultW.ballot) //check that all the msg were received
+                    return ballotW.get(0);
+                return -1; // return vm
+
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         return -1;
     }
