@@ -8,7 +8,7 @@ import com.example.msg.*;
 
 import java.util.ArrayList;
 
-public class Waiter_process  extends UntypedAbstractActor {
+public class Counter extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private ActorRef parent;
     private int r;
@@ -16,7 +16,7 @@ public class Waiter_process  extends UntypedAbstractActor {
     private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
     private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
 
-    public Waiter_process(ActorRef parent, int r, int N){
+    public Counter(ActorRef parent, int r, int N){
         this.parent = parent;
         this.r = r;
         this.N = N;
