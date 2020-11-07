@@ -1,25 +1,41 @@
 package com.example;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.pattern.Patterns;
+import akka.util.Timeout;
 import com.example.msg.*;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
 
 public class WriterReader extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+    private Timeout timeout = Timeout.create(Duration.ofSeconds(15));
+    private MembersMsg processes;//other processes' references
+    private final ActorSystem system;
     private ActorRef parent;
     private int r;
     private int N;
+    private int t;
     private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
     private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
+
+    public WriterReader( ActorSystem system, MembersMsg processes, ActorRef parent, int r, int N, int t) {
+        this.system = system;
+        this.processes = processes;
+        this.parent = parent;
+        this.r = r;
+        this.N = N;
+        this.t = t;
+    }
 
     public ActorRef createAuxiliary(){
         Props auxp = Props.create(Counter.class, () -> new Counter(self(), r, N));
@@ -27,7 +43,6 @@ public class WriterReader extends UntypedAbstractActor {
     }
 
     public int read() {
-        if(!this.failed) {
             r++;
             ArrayList<Integer> ballotR = new ArrayList<>();
             ballotR.add(r);
@@ -73,12 +88,9 @@ public class WriterReader extends UntypedAbstractActor {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
-        return -1;
     }
 
     public boolean write(int value){
-        if(!this.failed) {
             r++;
             ArrayList<Integer> ballotR = new ArrayList<>();
             ballotR.add(r);
@@ -121,8 +133,6 @@ public class WriterReader extends UntypedAbstractActor {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
-        return false;
     }
 
     @Override
