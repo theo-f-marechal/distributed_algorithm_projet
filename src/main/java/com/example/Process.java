@@ -1,18 +1,26 @@
 package com.example;
 
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
+import akka.dispatch.OnComplete;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.pattern.Patterns;
+import akka.util.Timeout;
 import com.example.msg.*;
+import scala.concurrent.Await;
+import scala.concurrent.Future;
+
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.TimeoutException;
+
 
 public class Process extends UntypedAbstractActor {
-    Lock lockR = new LockReadAnswer();
-    Lock lockW = new LockWriteAnswer();
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);// Logger attached to actor
+    public final ActorSystem system;
     private final int N;//number of processes
     private final int id;//id of current process
     private MembersMsg processes;//other processes' references
@@ -21,10 +29,10 @@ public class Process extends UntypedAbstractActor {
     private int t = 0;
     private int r = 0;
     private boolean failed = false;
-    private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
-    private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
+    private Timeout timeout = Timeout.create(Duration.ofSeconds(15));
 
-    public Process(int ID, int nb) {
+    public Process(ActorSystem system, int ID, int nb) {
+        this.system = system;
         N = nb;
         id = ID;
         //this.failed = false;
@@ -37,48 +45,18 @@ public class Process extends UntypedAbstractActor {
     /**
      * Static function creating actor
      */
-    public static Props createActor(int ID, int nb) {
-        return Props.create(Process.class, () -> new Process(ID, nb));
+    public static Props createActor(ActorSystem system, int ID, int nb) {
+        return Props.create(Process.class, () -> new Process(system, ID, nb));
     }
 
-    //auxiliary functions
-
-    private ArrayList<Integer> ReadAnswerMax(){
-        if (!this.ReadAnswers.isEmpty()) {
-            int max_v = this.ReadAnswers.get(0).get(0);
-            int max_t = this.ReadAnswers.get(0).get(1);
-
-            for (int i = 1; i < this.ReadAnswers.size(); i++) {
-                int i_v = this.ReadAnswers.get(i).get(0);
-                int i_t = this.ReadAnswers.get(i).get(1);
-                if (max_t < i_t || (max_t == i_t && max_v < i_v)) {
-                    max_t = i_t;
-                    max_v = i_v;
-                }
-            }
-
-            ArrayList<Integer> max_v_t = new ArrayList<>();
-            max_v_t.add(max_v);
-            max_v_t.add(max_t);
-            return max_v_t;
-        }
-        ArrayList<Integer> max_v_t = new ArrayList<>();
-        max_v_t.add(-1);
-        max_v_t.add(-1);
-        return max_v_t;
-    }
-
-    private boolean WriteAnswerValidate(){
-        for ( int i = 0; i < this.ReadAnswers.size(); i++){
-            if (this.WriteAnswers.get(i).get(2) != 1)
-                return true;
-        }
-        return false;
+    public ActorRef createAuxiliary(){
+        Props auxp = Props.create(Waiter_process.class, () -> new Waiter_process(self(), r, N));
+        return system.actorOf(auxp);
     }
 
     // on received functions
     
-    private void readReceived(ArrayList<Integer> ballot, ActorRef sender) {
+    private void readReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
         if(!this.failed) {
             log.info(self().path().name() + " received read request from " + sender.path().name());
             ArrayList<Integer> newballot = new ArrayList<>();
@@ -86,11 +64,11 @@ public class Process extends UntypedAbstractActor {
             newballot.add(localTS);
             newballot.add(ballot.get(0));
             AnswerReadMsg message = new AnswerReadMsg(newballot);
-            sender.tell(message, self());
+            receiver.tell(message, self());
         }
     }
     
-    private void writeReceived(ArrayList<Integer> ballot, ActorRef sender) {
+    private void writeReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
         if(!this.failed) {
             log.info(self().path().name() + " received write request from " + sender.path().name());
             if (ballot.get(1) > localTS ||
@@ -104,33 +82,10 @@ public class Process extends UntypedAbstractActor {
             newballot.add(1); //augmentation de la taille des ballot ici
             newballot.add(r); // may be could only answer with [ask,r]
             AnswerWriteMsg message = new AnswerWriteMsg(newballot); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
-            sender.tell(message,self());
+            receiver.tell(message,self());
         }
     }
 
-    private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
-        if (!failed) {
-                int request_sequence_number = ballot.get(2);
-                if (request_sequence_number == r) {
-                    this.ReadAnswers.add(ballot);
-                }
-                log.info(self().path().name() + " received an answer to a read request from " + sender.path().name());
-                if (this.ReadAnswers.size() < N/2)
-                    lockR.unlock();
-        }
-    }
-
-    private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender) {
-        if (!failed) {
-            int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
-            if (request_sequence_number == r) {
-                this.WriteAnswers.add(ballot);
-            }
-            log.info(self().path().name() + " received an answer to a write request from " + sender.path().name());
-            if (this.WriteAnswers.size() < N/2)
-                lockW.unlock();
-        }
-    }
 
     //read write
 
@@ -139,40 +94,52 @@ public class Process extends UntypedAbstractActor {
             r++;
             ArrayList<Integer> ballotR = new ArrayList<>();
             ballotR.add(r);
-            ReadMsg messageR = new ReadMsg(ballotR);
+            ActorRef auxip1 = createAuxiliary(); // create the auxiliary process n°1
 
-            this.ReadAnswers.clear();
-            for (ActorRef i : processes.references) { //envoi des mesage à tout les process
+            ReadMsg messageR = new ReadMsg(ballotR, auxip1);
+
+            for (ActorRef i : processes.references) { //send messages to all processes
                 if (i == self())
                     continue;
-                i.tell(messageR, self());
+                i.tell(messageR, self()); // send a message with the auxiliary process ref
             }
-            /*while (this.ReadAnswers.size() < N/2){ //wait for more a majority to answer
-                try {
-                    self().wait();
-                } catch (InterruptedException ignored) { }
-            }*/
-            lockR.lock();
 
-            ArrayList<Integer> ballotW = ReadAnswerMax(); // [vm;tm]
-            WriteMsg messageW = new WriteMsg(ballotW);
+            //wait
+            Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
+            future1.onComplete(new OnComplete<Object>(){
+                public void onComplete(Throwable t, Object result){
+                    try {
+                        // wait for the auxiliary process to answer
+                        AuxiliaryReadAnswerMsg resultR = (AuxiliaryReadAnswerMsg) Await.result(future1, timeout.duration());
 
-            this.WriteAnswers.clear();
-            for (ActorRef i : processes.references) { //send msg to all process
-                if (i == self())
-                    continue;
-                i.tell(messageW, self());
-            }
-            /*while (this.WriteAnswers.size() < N/2){ //wait for more a majority to answer
-                try {
-                    self().wait();
-                } catch (InterruptedException ignored) { }
-            }*/
-            lockR.lock();
+                        ArrayList<Integer> ballotW = resultR.ballot; // recover the result sent by auxip1 [vm;tm]
+                        system.stop(auxip1); // close the now useless auxiliary process
+                        ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
 
-            if (WriteAnswerValidate()) //check that all the msg were received
-                return -1;
-            return ballotW.get(0); // return vm
+                        WriteMsg messageW = new WriteMsg(ballotW, auxip2);
+
+                        for (ActorRef i : processes.references) { //send msg to all process
+                            if (i == self())
+                                continue;
+                            i.tell(messageW, self());
+                        }
+                        // wait
+                        Future<Object> future2 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
+                        AuxiliaryWriteAnswerMsg resultW = (AuxiliaryWriteAnswerMsg) Await.result(future2, timeout.duration());
+
+                        system.stop(auxip2);
+
+                        if (resultW.ballot) //check that all the msg were received
+                            return ballotW.get(0);
+                        return -1; // return vm
+
+                    } catch (TimeoutException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            },system.dispatcher());
         }
         return -1;
     }
@@ -182,46 +149,45 @@ public class Process extends UntypedAbstractActor {
             r++;
             ArrayList<Integer> ballotR = new ArrayList<>();
             ballotR.add(r);
-            ReadMsg messageR = new ReadMsg(ballotR);
+            ActorRef auxip1 = createAuxiliary(); // create the auxiliary process n°1
 
-            this.ReadAnswers.clear();
+            ReadMsg messageR = new ReadMsg(ballotR, auxip1);
+
             for (ActorRef i : processes.references) { //send msg to all process
                 if (i == self())
                     continue;
-                i.tell(messageR, self());
+                i.tell(messageR, self()); //send as auxip1
             }
 
-            /*while (this.ReadAnswers.size() < N/2) { //wait for more a majority to answer
-                try {
-                    self().wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
+            try {
+                AuxiliaryReadAnswerMsg resultR = (AuxiliaryReadAnswerMsg) Await.result(future1, timeout.duration());
+
+                t = resultR.ballot.get(1) + 1; // tm + 1
+                ArrayList<Integer> ballotW = new ArrayList<>();
+                ballotW.add(value); ballotW.add(t);
+                system.stop(auxip1); // close the now useless auxiliary process
+                ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
+
+                WriteMsg messageW = new WriteMsg(ballotW, auxip2);
+
+                for (ActorRef i : processes.references) { //send msg to all process
+                    if (i == self())
+                        continue;
+                    i.tell(messageW, self());
                 }
-            }*/
-            lockW.lock();
 
-            t = ReadAnswerMax().get(1) + 1; // tm + 1
+                //wait
+                Future<Object> future2 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
+                AuxiliaryWriteAnswerMsg resultW = (AuxiliaryWriteAnswerMsg) Await.result(future2, timeout.duration());
+                system.stop(auxip2);
 
-            ArrayList<Integer> ballotW = new ArrayList<>();
-            ballotW.add(value);
-            ballotW.add(t);
-            WriteMsg messageW = new WriteMsg(ballotW);
-
-            this.WriteAnswers.clear();
-            for (ActorRef i : processes.references) { //send msg to all process
-                if (i == self())
-                    continue;
-                i.tell(messageW, self());
+                return resultW.ballot;
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            /*while (this.WriteAnswers.size() < N/2) { //wait for more a majority to answer
-                try {
-                    self().wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }*/
-            lockW.lock();
-            return !WriteAnswerValidate();
         }
         return false;
     }
@@ -248,19 +214,11 @@ public class Process extends UntypedAbstractActor {
 
             } else if (message instanceof WriteMsg) {
                 WriteMsg m = (WriteMsg) message;
-                this.writeReceived(m.ballot, getSender());
+                this.writeReceived(m.ballot, getSender(),m.auxi);
 
             } else if (message instanceof ReadMsg) {
                 ReadMsg m = (ReadMsg) message;
-                this.readReceived(m.ballot, getSender());
-
-            } else if (message instanceof AnswerReadMsg){
-                AnswerReadMsg m = (AnswerReadMsg) message;
-                this.answerReadReceived(m.ballot, getSender());
-
-            } else if (message instanceof AnswerWriteMsg){
-                AnswerWriteMsg m = (AnswerWriteMsg) message;
-                this.answerWriteReceived(m.ballot, getSender());
+                this.readReceived(m.ballot, getSender(), m.auxi);
 
             } else if (message instanceof FailMsg){
                 this.failed = true;

@@ -20,7 +20,7 @@ public class Main {
 
     for (int i = 0; i < N; i++) {
       // Instantiate processes
-      final ActorRef a = system.actorOf(Process.createActor(i + 1, N), "" + i);
+      final ActorRef a = system.actorOf(Process.createActor(system, i + 1, N), "" + i);
       references.add(a);
     }
     System.out.println(" ref " + references.toString());
@@ -58,7 +58,7 @@ public class Main {
   }
 
   public static void waitBeforeTerminate() throws InterruptedException {
-    Thread.sleep(5000);
+    Thread.sleep(50000);
   }
 
   public static void terminate(ActorSystem system){

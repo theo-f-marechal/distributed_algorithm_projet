@@ -1,5 +1,7 @@
 package com.example.msg;
 import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+
 import java.util.ArrayList;
 /**
  * Class containing the processes' references
