@@ -116,9 +116,10 @@ public class Process extends UntypedAbstractActor {
                 this.Launch();
             }else if (message instanceof UpdateMsg){
                 UpdateMsg m = (UpdateMsg) message;
-                if(m.destroy_WriterReader) {
+                if(!m.destroy_WriterReader) {
                     r = m.r;
                     t = m.t;
+                    this.localValue = m.value;
                 } else {
                     r = m.r;
                     t = m.t;

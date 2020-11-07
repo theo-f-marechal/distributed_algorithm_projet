@@ -147,8 +147,8 @@ public class WriterReader extends UntypedAbstractActor {
             parent.tell(msg1, self());
             int read_value = read();
             log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
-            UpdateMsg msg1 = new UpdateMsg(true,-1,r,t);
-            parent.tell(msg1, self());
+            UpdateMsg msg2 = new UpdateMsg(true,-1,r,t);
+            parent.tell(msg2, self());
         }
 
     }
