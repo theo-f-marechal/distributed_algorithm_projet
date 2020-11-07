@@ -37,7 +37,7 @@ public class WriterReader extends UntypedAbstractActor {
         this.t = t;
     }
 
-    public ActorRef createAuxiliary(){
+    public ActorRef createCounter(){
         Props auxp = Props.create(Counter.class, () -> new Counter(self(), r, N));
         return system.actorOf(auxp);
     }
@@ -46,7 +46,7 @@ public class WriterReader extends UntypedAbstractActor {
         r++;
         ArrayList<Integer> ballotR = new ArrayList<>();
         ballotR.add(r);
-        ActorRef auxip1 = createAuxiliary(); // create the auxiliary process n°1
+        ActorRef auxip1 = createCounter(); // create the auxiliary process n°1
 
         ReadMsg messageR = new ReadMsg(ballotR, auxip1);
 
@@ -64,7 +64,7 @@ public class WriterReader extends UntypedAbstractActor {
 
             ArrayList<Integer> ballotW = resultR.ballot; // recover the result sent by auxip1 [vm;tm]
             system.stop(auxip1); // close the now useless auxiliary process
-            ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
+            ActorRef auxip2 = createCounter(); // create the auxiliary process n°2
 
             WriteMsg messageW = new WriteMsg(ballotW, auxip2);
 
@@ -95,7 +95,7 @@ public class WriterReader extends UntypedAbstractActor {
         r++;
         ArrayList<Integer> ballotR = new ArrayList<>();
         ballotR.add(r);
-        ActorRef auxip1 = createAuxiliary(); // create the auxiliary process n°1
+        ActorRef auxip1 = createCounter(); // create the auxiliary process n°1
 
         ReadMsg messageR = new ReadMsg(ballotR, auxip1);
 
@@ -113,7 +113,7 @@ public class WriterReader extends UntypedAbstractActor {
             ArrayList<Integer> ballotW = new ArrayList<>();
             ballotW.add(value); ballotW.add(t);
             system.stop(auxip1); // close the now useless auxiliary process
-            ActorRef auxip2 = createAuxiliary(); // create the auxiliary process n°2
+            ActorRef auxip2 = createCounter(); // create the auxiliary process n°2
 
             WriteMsg messageW = new WriteMsg(ballotW, auxip2);
 
