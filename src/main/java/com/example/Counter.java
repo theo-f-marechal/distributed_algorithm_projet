@@ -61,13 +61,13 @@ public class Counter extends UntypedAbstractActor {
             int request_sequence_number = ballot.get(2);
             if (request_sequence_number == r) {
                 this.ReadAnswers.add(ballot);
-            }
-            log.info(self().path().name() + " received an answer to a read request from " + sender.path().name());
-            if (this.ReadAnswers.size() < N/2){
-                ArrayList<Integer> return_v = ReadAnswerMax();  //[vm,tm]
+                if (this.ReadAnswers.size() < N / 2) {
+                    ArrayList<Integer> return_v = ReadAnswerMax();  //[vm,tm]
 
-                //message to parent
-                parent.tell(new AuxiliaryReadAnswerMsg(return_v), getSelf());
+                    //message to parent
+                    log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " ReadAnswersize = " + this.ReadAnswers.size());
+                    parent.tell(new AuxiliaryReadAnswerMsg(return_v), getSelf());
+                }
             }
     }
 
@@ -75,13 +75,13 @@ public class Counter extends UntypedAbstractActor {
             int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
             if (request_sequence_number == r) {
                 this.WriteAnswers.add(ballot);
-            }
-            log.info(self().path().name() + " received an answer to a write request from " + sender.path().name());
-            if (this.WriteAnswers.size() < N/2){
-                Boolean return_v = WriteAnswerValidate();
+                if (this.WriteAnswers.size() < N / 2) {
+                    Boolean return_v = WriteAnswerValidate();
 
-                //message to parent
-                parent.tell(new AuxiliaryWriteAnswerMsg(return_v), getSelf());
+                    //message to parent
+                    log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " WriteAnswersize = " + this.WriteAnswers.size());
+                    parent.tell(new AuxiliaryWriteAnswerMsg(return_v), getSelf());
+                }
             }
     }
 
@@ -91,15 +91,15 @@ public class Counter extends UntypedAbstractActor {
         if (message instanceof AnswerReadMsg){
             AnswerReadMsg m = (AnswerReadMsg) message;
             this.answerReadReceived(m.ballot, getSender());
-            log.info( "auxiliary process " + self().path().name() + " received a ReadAnswer by " + getSender());
+            log.info( "auxiliary process " + self().path().name() + " received a ReadAnswer by " + getSender().path().name());
 
         } else if (message instanceof AnswerWriteMsg){
             AnswerWriteMsg m = (AnswerWriteMsg) message;
             this.answerWriteReceived(m.ballot, getSender());
-            log.info( "auxiliary process " + self().path().name() + " received a WriteAnswer by " + getSender());
+            log.info( "auxiliary process " + self().path().name() + " received a WriteAnswer by " + getSender().path().name());
 
         } else if (message instanceof StartAnsweringMsg) {
-            log.info( "auxiliary process " + self().path().name() + " was asked to start waiting by " + getSender());
+            log.info( "auxiliary process " + self().path().name() + " was asked to start waiting by " + getSender().path().name());
         }
     }
 }

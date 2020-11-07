@@ -58,7 +58,7 @@ public class Main {
   }
 
   public static void waitBeforeTerminate() throws InterruptedException {
-    Thread.sleep(50000);
+    Thread.sleep(500000);
   }
 
   public static void terminate(ActorSystem system){

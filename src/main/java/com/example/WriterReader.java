@@ -112,7 +112,7 @@ public class WriterReader extends UntypedAbstractActor {
             t = resultR.ballot.get(1) + 1; // tm + 1
             ArrayList<Integer> ballotW = new ArrayList<>();
             ballotW.add(value); ballotW.add(t);
-            system.stop(auxip1); // close the now useless auxiliary process
+            //system.stop(auxip1); // close the now useless auxiliary process
             ActorRef auxip2 = createCounter(); // create the auxiliary process n°2
 
             WriteMsg messageW = new WriteMsg(ballotW, auxip2);
@@ -126,7 +126,7 @@ public class WriterReader extends UntypedAbstractActor {
             //wait
             Future<Object> future2 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
             AuxiliaryWriteAnswerMsg resultW = (AuxiliaryWriteAnswerMsg) Await.result(future2, timeout.duration());
-            system.stop(auxip2);
+            //system.stop(auxip2);
 
             return resultW.ballot;
         } catch (TimeoutException e) {
@@ -145,6 +145,7 @@ public class WriterReader extends UntypedAbstractActor {
             log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
             UpdateMsg msg1 = new UpdateMsg(false,value,r,t);
             parent.tell(msg1, self());
+
             int read_value = read();
             log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
             UpdateMsg msg2 = new UpdateMsg(true,-1,r,t);
