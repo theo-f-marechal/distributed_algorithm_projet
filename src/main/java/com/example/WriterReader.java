@@ -139,7 +139,7 @@ public class WriterReader extends UntypedAbstractActor {
 
     @Override
     public void onReceive(Object message) throws Throwable {
-        if(message instanceof UpdateMsg){
+        if(message instanceof LaunchMsg){
             int value = 2;
             boolean succes = write(value);
             log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
