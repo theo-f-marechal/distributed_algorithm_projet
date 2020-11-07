@@ -103,7 +103,7 @@ public class Process extends UntypedAbstractActor {
                     continue;
                 i.tell(messageR, self()); // send a message with the auxiliary process ref
             }
-
+            Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
             //wait
             try {
                 // wait for the auxiliary process to answer
