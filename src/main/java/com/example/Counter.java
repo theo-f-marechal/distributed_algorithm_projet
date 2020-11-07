@@ -58,31 +58,31 @@ public class Counter extends UntypedAbstractActor {
     // reciever fonction
 
     private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
-            int request_sequence_number = ballot.get(2);
-            if (request_sequence_number == r) {
-                this.ReadAnswers.add(ballot);
-                if (this.ReadAnswers.size() < N / 2) {
-                    ArrayList<Integer> return_v = ReadAnswerMax();  //[vm,tm]
+        int request_sequence_number = ballot.get(2);
+        if (request_sequence_number == r) {
+            this.ReadAnswers.add(ballot);
+            if (this.ReadAnswers.size() > N / 2) {
+                ArrayList<Integer> return_v = ReadAnswerMax();  //[vm,tm]
 
-                    //message to parent
-                    log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " ReadAnswersize = " + this.ReadAnswers.size());
-                    parent.tell(new AuxiliaryReadAnswerMsg(return_v), getSelf());
-                }
+                //message to parent
+                log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " ReadAnswersize = " + this.ReadAnswers.size() + " N " + N);
+                parent.tell(new AuxiliaryReadAnswerMsg(return_v), getSelf());
             }
+        }
     }
 
     private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender) {
-            int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
-            if (request_sequence_number == r) {
-                this.WriteAnswers.add(ballot);
-                if (this.WriteAnswers.size() < N / 2) {
-                    Boolean return_v = WriteAnswerValidate();
+        int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+        if (request_sequence_number == r) {
+            this.WriteAnswers.add(ballot);
+            if (this.WriteAnswers.size() > N / 2) {
+                Boolean return_v = WriteAnswerValidate();
 
-                    //message to parent
-                    log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " WriteAnswersize = " + this.WriteAnswers.size());
-                    parent.tell(new AuxiliaryWriteAnswerMsg(return_v), getSelf());
-                }
+                //message to parent
+                log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " WriteAnswersize = " + this.WriteAnswers.size() + " N " + N);
+                parent.tell(new AuxiliaryWriteAnswerMsg(return_v), getSelf());
             }
+        }
     }
 
 
