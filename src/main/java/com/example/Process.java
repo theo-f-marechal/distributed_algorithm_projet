@@ -81,14 +81,13 @@ public class Process extends UntypedAbstractActor {
         }
     }
 
-    private void updateReceived() {
-
-    }
-
     // Launching
 
     private void Launch() {
         if (!this.failed) {
+            Props writerReader = Props.create(WriterReader.class, () -> new WriterReader(system, processes, self(), r, N, t));
+            LaunchMsg message = new LaunchMsg();
+            system.actorOf(writerReader).tell(message,self());
         }
     }
 
