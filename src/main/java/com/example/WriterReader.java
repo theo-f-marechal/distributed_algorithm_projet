@@ -143,11 +143,11 @@ public class WriterReader extends UntypedAbstractActor {
             int value = 2;
             boolean succes = write(value);
             log.info(self().path().name() + " wrote " + value + " (almost) everywhere with succes? " + succes);
-            UpdateMsg msg1 = new UpdateMsg(r,t,false);
+            UpdateMsg msg1 = new UpdateMsg(false,value,r,t);
             parent.tell(msg1, self());
             int read_value = read();
             log.info(self().path().name() + " read " + read_value + " (almost) everywhere");
-            UpdateMsg msg1 = new UpdateMsg(r,t,false);
+            UpdateMsg msg1 = new UpdateMsg(true,-1,r,t);
             parent.tell(msg1, self());
         }
 
