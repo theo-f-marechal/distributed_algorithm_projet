@@ -81,6 +81,9 @@ public class Process extends UntypedAbstractActor {
         }
     }
 
+    private void updateReceived() {
+
+    }
 
     // Launching
 
@@ -111,6 +114,16 @@ public class Process extends UntypedAbstractActor {
 
             }else if (message instanceof LaunchMsg){
                 this.Launch();
+            }else if (message instanceof UpdateMsg){
+                UpdateMsg m = (UpdateMsg) message;
+                if(m.destroy_WriterReader) {
+                    r = m.r;
+                    t = m.t;
+                } else {
+                    r = m.r;
+                    t = m.t;
+                    system.stop(getSender());
+                }
             }
         }
     }
