@@ -17,6 +17,7 @@ public class Process extends UntypedAbstractActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);// Logger attached to actor
     public final ActorSystem system;
     private final int N;//number of processes
+    private final int M;
     private final int id;//id of current process
     private MembersMsg processes;//other processes' references
     private int localValue = 0;
@@ -24,13 +25,13 @@ public class Process extends UntypedAbstractActor {
     private int t = 0;
     private int r = 0;
     private boolean failed = false;
-    private Timeout timeout = Timeout.create(Duration.ofSeconds(15));
+    private int count = 0;
 
-    public Process(ActorSystem system, int ID, int nb) {
+    public Process(ActorSystem system, int ID, int nb, int M) {
         this.system = system;
         N = nb;
         id = ID;
-        //this.failed = false;
+        this.M = M;
     }
 
     public String toString() {
@@ -40,8 +41,8 @@ public class Process extends UntypedAbstractActor {
     /**
      * Static function creating actor
      */
-    public static Props createActor(ActorSystem system, int ID, int nb) {
-        return Props.create(Process.class, () -> new Process(system, ID, nb));
+    public static Props createActor(ActorSystem system, int ID, int nb, int M) {
+        return Props.create(Process.class, () -> new Process(system, ID, nb, M));
     }
 
     // on received functions

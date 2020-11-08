@@ -2,25 +2,28 @@ package com.example;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.util.Timeout;
 import com.example.msg.FailMsg;
 import com.example.msg.LaunchMsg;
 import com.example.msg.MembersMsg;
 
+import java.time.Duration;
 import java.util.ArrayList;
 
 public class Main {
 
   public static int N = 10;
+  public static int M = 10;
 
   public static void main(String[] args) {
     final ActorSystem system = ActorSystem.create("system");
-    system.log().info("System started with N=" + N);
+    system.log().info("System started with N = " + N + " and M = " + M);
 
     ArrayList<ActorRef> references = new ArrayList<>();
 
     for (int i = 0; i < N; i++) {
       // Instantiate processes
-      final ActorRef a = system.actorOf(Process.createActor(system, i + 1, N), "" + i);
+      final ActorRef a = system.actorOf(Process.createActor(system, i + 1, N, M), "" + i);
       references.add(a);
     }
 
@@ -57,7 +60,8 @@ public class Main {
   }
 
   public static void waitBeforeTerminate() throws InterruptedException {
-    Thread.sleep(500000);
+    int nb_second = 50;
+    Thread.sleep(nb_second * 1000);
   }
 
   public static void terminate(ActorSystem system){
