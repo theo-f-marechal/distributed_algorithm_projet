@@ -51,21 +51,21 @@ public class Process extends UntypedAbstractActor {
 
     // on received functions
 
-    private void readReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
+    private void readReceived(ArrayList<Integer> ballot, ActorRef receiver) { // ballot [r]
         if(!this.failed) {
-            log.info(self().path().name() + " received read request from " + sender.path().name());
+            //log.info(self().path().name() + " received read request from " + sender.path().name());
             ArrayList<Integer> newballot = new ArrayList<>();
             newballot.add(localValue);
             newballot.add(localTS);
             newballot.add(ballot.get(0));
-            AnswerReadMsg message = new AnswerReadMsg(newballot);
+            AnswerReadMsg message = new AnswerReadMsg(newballot); //newballot [loc_v, loc_t, r]
             receiver.tell(message, self());
         }
     }
 
-    private void writeReceived(ArrayList<Integer> ballot, ActorRef sender, ActorRef receiver) {
+    private void writeReceived(ArrayList<Integer> ballot, ActorRef receiver) { //ballot [v,t, r]
         if(!this.failed) {
-            log.info(self().path().name() + " received write request from " + sender.path().name());
+            //log.info(self().path().name() + " received write request from " + sender.path().name());
             if (ballot.get(1) > localTS ||
                     (ballot.get(1) == localTS && ballot.get(0) > localValue)){
                 localValue = ballot.get(0);
@@ -74,9 +74,9 @@ public class Process extends UntypedAbstractActor {
             ArrayList<Integer> newballot = new ArrayList<>();
             newballot.add(ballot.get(0));
             newballot.add(ballot.get(1));
-            newballot.add(1); //augmentation de la taille des ballot ici
-            newballot.add(r); // may be could only answer with [ask,r]
-            AnswerWriteMsg message = new AnswerWriteMsg(newballot); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+            newballot.add(ballot.get(2));
+            newballot.add(1);
+            AnswerWriteMsg message = new AnswerWriteMsg(newballot); // newballot[v,t, r,ack]
             receiver.tell(message,self());
         }
     }
@@ -85,7 +85,7 @@ public class Process extends UntypedAbstractActor {
 
     private void Launch() {
         if (!this.failed) {
-            Props writerReader = Props.create(WriterReader.class, () -> new WriterReader(system, processes, self(), r, N, t));
+            Props writerReader = Props.create(WriterReader.class, () -> new WriterReader(system, processes, self(), r, N, t,id));
             LaunchMsg message = new LaunchMsg();
             system.actorOf(writerReader).tell(message,self());
         }
@@ -101,11 +101,11 @@ public class Process extends UntypedAbstractActor {
 
             } else if (message instanceof WriteMsg) {
                 WriteMsg m = (WriteMsg) message;
-                this.writeReceived(m.ballot, getSender(),m.auxi);
+                this.writeReceived(m.ballot, m.auxi);
 
             } else if (message instanceof ReadMsg) {
                 ReadMsg m = (ReadMsg) message;
-                this.readReceived(m.ballot, getSender(), m.auxi);
+                this.readReceived(m.ballot, m.auxi);
 
             } else if (message instanceof FailMsg){
                 this.failed = true;
@@ -113,6 +113,7 @@ public class Process extends UntypedAbstractActor {
 
             }else if (message instanceof LaunchMsg){
                 this.Launch();
+
             }else if (message instanceof UpdateMsg){
                 UpdateMsg m = (UpdateMsg) message;
                 if(!m.destroy_WriterReader) {
