@@ -6,10 +6,7 @@ import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.util.Timeout;
 import com.example.msg.*;
-
-import java.time.Duration;
 import java.util.ArrayList;
 
 
@@ -82,7 +79,7 @@ public class Process extends UntypedAbstractActor {
     private void Launch() {
         if (!this.failed) {
             Props writerReader = Props.create(WriterReader.class, () -> new WriterReader(system, processes, self(), r, N, t,id));
-            LaunchMsg message = new LaunchMsg(2);
+            LaunchMsg message = new LaunchMsg(count);
             system.actorOf(writerReader).tell(message,self());
         }
     }
@@ -122,6 +119,10 @@ public class Process extends UntypedAbstractActor {
                     system.stop(getSender());
                     for (ActorRef i : m.auxiliaryProcessToStop){
                         system.stop(i);
+                    }
+                    count++;
+                    if (count < M){
+                        this.Launch();
                     }
                 }
             }

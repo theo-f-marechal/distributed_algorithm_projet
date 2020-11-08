@@ -18,6 +18,7 @@ public class WriterReader extends UntypedAbstractActor {
     private int N;
     private int t;
     private int id;
+    private int count;
     private int writeValue;
     private int readValue;
     private boolean writing = true;
@@ -117,7 +118,8 @@ public class WriterReader extends UntypedAbstractActor {
         if (!closing) {
             if (message instanceof LaunchMsg) {
                 LaunchMsg m = (LaunchMsg) message;
-                int value = m.value;
+                this.count = m.count;
+                int value = count * N + id;
                 write1(value);
 
             } else if (message instanceof AuxiliaryReadAnswerMsg) {
@@ -133,19 +135,14 @@ public class WriterReader extends UntypedAbstractActor {
             } else if (message instanceof AuxiliaryWriteAnswerMsg) {
                 AuxiliaryWriteAnswerMsg m = (AuxiliaryWriteAnswerMsg) message;
                 if (writing && m.fWrite) { //write2
-                    log.info(id + " wrote " + this.writeValue + " (almost) everywhere with succes? " + m.ballot);
+                    log.info(id + " W[" + count + "], value " + this.writeValue + " written with succes? " + m.ballot);
                     UpdateMsg msg1 = new UpdateMsg(false, this.auxiliaryProcessToStop,-1, r, t);
                     parent.tell(msg1, self());
                     this.writing = false;
                     read1();
 
                 } else if (!writing && !m.fWrite) {
-                    if (!m.ballot) {
-                        log.info(id + " read " + this.readValue + " (almost) everywhere " +
-                                "but an error occur while trying to write that value");
-                    } else {
-                        log.info(id + " read " + this.readValue + " (almost) everywhere");
-                    }
+                    log.info(id + " R[" + count + "], read value: " + this.readValue +", error whle writing: " + !m.ballot);
                     UpdateMsg msg2 = new UpdateMsg(true, this.auxiliaryProcessToStop,this.readValue, r, t);
                     parent.tell(msg2, self());
                     this.closing = true;

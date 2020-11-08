@@ -2,14 +2,14 @@ package com.example;
 
 import akka.actor.ActorRef;
 import akka.actor.UntypedAbstractActor;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
-import com.example.msg.*;
+import com.example.msg.AnswerReadMsg;
+import com.example.msg.AnswerWriteMsg;
+import com.example.msg.AuxiliaryReadAnswerMsg;
+import com.example.msg.AuxiliaryWriteAnswerMsg;
 
 import java.util.ArrayList;
 
 public class Counter extends UntypedAbstractActor {
-    private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private ActorRef parent;
     private int r;
     private int N;
@@ -65,7 +65,6 @@ public class Counter extends UntypedAbstractActor {
             this.ReadAnswers.add(ballot);
             if (this.ReadAnswers.size() > (N / 2)) {
                 ArrayList<Integer> newballot = ReadAnswerMax();  //[vm,tm]
-                //log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " ReadAnswersize = " + this.ReadAnswers.size() + " N " + N);
                 parent.tell(new AuxiliaryReadAnswerMsg(newballot,this.fWrite), self()); //end wait
             }
         }
@@ -77,7 +76,6 @@ public class Counter extends UntypedAbstractActor {
             this.WriteAnswers.add(ballot);
             if (this.WriteAnswers.size() > (N / 2) ) {
                 boolean newballot = WriteAnswerValidate();
-                //log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " WriteAnswersize = " + this.WriteAnswers.size() + " N " + N);
                 parent.tell(new AuxiliaryWriteAnswerMsg(newballot, this.fWrite), self()); // wait
             }
         }
@@ -89,12 +87,10 @@ public class Counter extends UntypedAbstractActor {
         if (message instanceof AnswerReadMsg){
             AnswerReadMsg m = (AnswerReadMsg) message;
             this.answerReadReceived(m.ballot);
-            //log.info( "auxiliary process " + self().path().name() + " received a ReadAnswer by " + getSender().path().name());
 
         } else if (message instanceof AnswerWriteMsg){
             AnswerWriteMsg m = (AnswerWriteMsg) message;
             this.answerWriteReceived(m.ballot);
-            //log.info( "auxiliary process " + self().path().name() + " received a WriteAnswer by " + getSender().path().name());
         }
     }
 }
