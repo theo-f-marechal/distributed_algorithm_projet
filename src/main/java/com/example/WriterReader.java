@@ -25,8 +25,6 @@ public class WriterReader extends UntypedAbstractActor {
     private int r;
     private int N;
     private int t;
-    private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
-    private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
 
     public WriterReader( ActorSystem system, MembersMsg processes, ActorRef parent, int r, int N, int t) {
         this.system = system;
@@ -38,7 +36,7 @@ public class WriterReader extends UntypedAbstractActor {
     }
 
     public ActorRef createCounter(){
-        Props auxp = Props.create(Counter.class, () -> new Counter(self(), r, N));
+        Props auxp = Props.create(Counter.class, () -> new Counter( r, N));
         return system.actorOf(auxp);
     }
 
@@ -88,7 +86,8 @@ public class WriterReader extends UntypedAbstractActor {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return -1;
+        log.info("\nTimeout\n");
+        return -2;
     }
 
     public boolean write(int value){
@@ -105,8 +104,8 @@ public class WriterReader extends UntypedAbstractActor {
             i.tell(messageR, self()); //send as auxip1
         }
 
-        Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
         try {
+            Future<Object> future1 = Patterns.ask(auxip1, new StartAnsweringMsg(), timeout);
             AuxiliaryReadAnswerMsg resultR = (AuxiliaryReadAnswerMsg) Await.result(future1, timeout.duration());
 
             t = resultR.ballot.get(1) + 1; // tm + 1
@@ -134,6 +133,7 @@ public class WriterReader extends UntypedAbstractActor {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        log.info("\nTimeout\n");
         return false;
     }
 

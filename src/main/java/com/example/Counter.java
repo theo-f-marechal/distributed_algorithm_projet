@@ -16,8 +16,7 @@ public class Counter extends UntypedAbstractActor {
     private ArrayList<ArrayList<Integer>> ReadAnswers = new ArrayList<>();
     private ArrayList<ArrayList<Integer>> WriteAnswers = new ArrayList<>();
 
-    public Counter(ActorRef parent, int r, int N){
-        this.parent = parent;
+    public Counter( int r, int N){
         this.r = r;
         this.N = N;
     }
@@ -57,7 +56,7 @@ public class Counter extends UntypedAbstractActor {
 
     // reciever fonction
 
-    private void answerReadReceived(ArrayList<Integer> ballot, ActorRef sender){
+    private void answerReadReceived(ArrayList<Integer> ballot){
         int request_sequence_number = ballot.get(2);
         if (request_sequence_number == r) {
             this.ReadAnswers.add(ballot);
@@ -66,12 +65,12 @@ public class Counter extends UntypedAbstractActor {
 
                 //message to parent
                 log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " ReadAnswersize = " + this.ReadAnswers.size() + " N " + N);
-                parent.tell(new AuxiliaryReadAnswerMsg(return_v), getSelf());
+                parent.tell(new AuxiliaryReadAnswerMsg(return_v), ActorRef.noSender());
             }
         }
     }
 
-    private void answerWriteReceived(ArrayList<Integer> ballot, ActorRef sender) {
+    private void answerWriteReceived(ArrayList<Integer> ballot) {
         int request_sequence_number = ballot.get(3); //kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
         if (request_sequence_number == r) {
             this.WriteAnswers.add(ballot);
@@ -80,7 +79,7 @@ public class Counter extends UntypedAbstractActor {
 
                 //message to parent
                 log.info("auxiliary process " + self().path().name() + " unlocked " + parent.path().name() + " WriteAnswersize = " + this.WriteAnswers.size() + " N " + N);
-                parent.tell(new AuxiliaryWriteAnswerMsg(return_v), getSelf());
+                parent.tell(new AuxiliaryWriteAnswerMsg(return_v), ActorRef.noSender());
             }
         }
     }
@@ -90,15 +89,16 @@ public class Counter extends UntypedAbstractActor {
     public void onReceive(Object message) throws Throwable {
         if (message instanceof AnswerReadMsg){
             AnswerReadMsg m = (AnswerReadMsg) message;
-            this.answerReadReceived(m.ballot, getSender());
+            this.answerReadReceived(m.ballot);
             log.info( "auxiliary process " + self().path().name() + " received a ReadAnswer by " + getSender().path().name());
 
         } else if (message instanceof AnswerWriteMsg){
             AnswerWriteMsg m = (AnswerWriteMsg) message;
-            this.answerWriteReceived(m.ballot, getSender());
+            this.answerWriteReceived(m.ballot);
             log.info( "auxiliary process " + self().path().name() + " received a WriteAnswer by " + getSender().path().name());
 
         } else if (message instanceof StartAnsweringMsg) {
+            parent = getSender();
             log.info( "auxiliary process " + self().path().name() + " was asked to start waiting by " + getSender().path().name());
         }
     }
