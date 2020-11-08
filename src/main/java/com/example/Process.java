@@ -102,20 +102,20 @@ public class Process extends UntypedAbstractActor {
 
             } else if (message instanceof FailMsg){
                 this.failed = true;
-                log.info(self().path().name() + " has successfully failed.");
+                log.info(id + " has successfully failed.");
 
             }else if (message instanceof LaunchMsg){
                 this.Launch();
 
             }else if (message instanceof UpdateMsg){
                 UpdateMsg m = (UpdateMsg) message;
-                if(!m.destroy_WriterReader) {
+                if(m.destroy_WriterReader) {
                     r = m.r;
                     t = m.t;
-                    this.localValue = m.value;
                 } else {
                     r = m.r;
                     t = m.t;
+                    this.localValue = m.value;
                     system.stop(getSender());
                     for (ActorRef i : m.auxiliaryProcessToStop){
                         system.stop(i);
@@ -123,9 +123,6 @@ public class Process extends UntypedAbstractActor {
                     count++;
                     if (count < M){
                         this.Launch();
-                    }
-                    else {
-                        //add a way to inform the main that this actor is done working
                     }
                 }
             }

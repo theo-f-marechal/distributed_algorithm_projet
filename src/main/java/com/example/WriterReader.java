@@ -136,14 +136,14 @@ public class WriterReader extends UntypedAbstractActor {
                 AuxiliaryWriteAnswerMsg m = (AuxiliaryWriteAnswerMsg) message;
                 if (writing && m.fWrite) { //write2
                     log.info(id + " W[" + count + "], value " + this.writeValue + " written with succes? " + m.ballot);
-                    UpdateMsg msg1 = new UpdateMsg(false, this.auxiliaryProcessToStop,-1, r, t);
+                    UpdateMsg msg1 = new UpdateMsg(true, this.auxiliaryProcessToStop,-2, r, t);
                     parent.tell(msg1, self());
                     this.writing = false;
                     read1();
 
                 } else if (!writing && !m.fWrite) {
                     log.info(id + " R[" + count + "], read value: " + this.readValue +", error whle writing: " + !m.ballot);
-                    UpdateMsg msg2 = new UpdateMsg(true, this.auxiliaryProcessToStop,this.readValue, r, t);
+                    UpdateMsg msg2 = new UpdateMsg(false, this.auxiliaryProcessToStop,this.readValue, r, t);
                     parent.tell(msg2, self());
                     this.closing = true;
                 }

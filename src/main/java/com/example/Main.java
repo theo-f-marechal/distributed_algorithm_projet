@@ -10,7 +10,7 @@ import java.util.ArrayList;
 public class Main {
 
   private static int [] tab_val = {3,10,50,100};
-  private static int nb_loop = 1;
+  private static int nb_loop = 4;
 
   public static void main(String[] args) {
     for (int y = 0; y < nb_loop; y++) {
@@ -40,7 +40,7 @@ public class Main {
 
       timeToLaunch(references);
 
-      terminate(system);
+      terminate(system, N);
     }
   }
 
@@ -62,14 +62,13 @@ public class Main {
     }
   }
 
-  public static void waitBeforeTerminate() throws InterruptedException {
-    int nb_second = 50;
-    Thread.sleep(nb_second * 1000);
+  public static void waitBeforeTerminate(int ns) throws InterruptedException {
+    Thread.sleep(ns * 1000);
   }
 
-  public static void terminate(ActorSystem system){
+  public static void terminate(ActorSystem system, int ns){
     try {
-      waitBeforeTerminate();
+      waitBeforeTerminate(ns);
     } catch (InterruptedException e) {
       e.printStackTrace();
     } finally {
@@ -79,7 +78,7 @@ public class Main {
 
   public static void timeToLaunch(ArrayList<ActorRef> references){
     for (ActorRef i : references){
-      LaunchMsg message = new LaunchMsg(2);
+      LaunchMsg message = new LaunchMsg(-3);
       i.tell(message, ActorRef.noSender());
     }
   }
