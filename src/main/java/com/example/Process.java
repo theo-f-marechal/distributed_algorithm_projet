@@ -4,18 +4,13 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.actor.UntypedAbstractActor;
-import akka.dispatch.OnComplete;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
-import akka.pattern.Patterns;
 import akka.util.Timeout;
 import com.example.msg.*;
-import scala.concurrent.Await;
-import scala.concurrent.Future;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.concurrent.TimeoutException;
 
 
 public class Process extends UntypedAbstractActor {
@@ -86,7 +81,7 @@ public class Process extends UntypedAbstractActor {
     private void Launch() {
         if (!this.failed) {
             Props writerReader = Props.create(WriterReader.class, () -> new WriterReader(system, processes, self(), r, N, t,id));
-            LaunchMsg message = new LaunchMsg();
+            LaunchMsg message = new LaunchMsg(2);
             system.actorOf(writerReader).tell(message,self());
         }
     }
@@ -124,6 +119,9 @@ public class Process extends UntypedAbstractActor {
                     r = m.r;
                     t = m.t;
                     system.stop(getSender());
+                    for (ActorRef i : m.auxiliaryProcessToStop){
+                        system.stop(i);
+                    }
                 }
             }
         }

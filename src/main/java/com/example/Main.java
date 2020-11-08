@@ -72,7 +72,7 @@ public class Main {
 
   public static void timeToLaunch(ArrayList<ActorRef> references){
     for (ActorRef i : references){
-      LaunchMsg message = new LaunchMsg();
+      LaunchMsg message = new LaunchMsg(2);
       i.tell(message, ActorRef.noSender());
     }
   }

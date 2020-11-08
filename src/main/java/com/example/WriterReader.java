@@ -22,6 +22,7 @@ public class WriterReader extends UntypedAbstractActor {
     private int readValue;
     private boolean writing = true;
     private boolean closing = false;
+    private ArrayList<ActorRef> auxiliaryProcessToStop;
 
     public WriterReader( ActorSystem system, MembersMsg processes, ActorRef parent, int r, int N, int t, int id) {
         this.system = system;
@@ -31,6 +32,7 @@ public class WriterReader extends UntypedAbstractActor {
         this.N = N;
         this.t = t;
         this.id = id;
+        this.auxiliaryProcessToStop = new ArrayList<>();
     }
 
     public ActorRef createCounter(boolean fWrite){
@@ -43,7 +45,10 @@ public class WriterReader extends UntypedAbstractActor {
         this.r++;
         ArrayList<Integer> ballotR = new ArrayList<>();
         ballotR.add(r);
+
         ActorRef auxip1 = createCounter(true); // create the auxiliary process n°1
+        this.auxiliaryProcessToStop.add(auxip1);
+
         ReadMsg messageR = new ReadMsg(ballotR, auxip1);
 
         for (ActorRef i : processes.references) { //send msg to all process
@@ -58,7 +63,9 @@ public class WriterReader extends UntypedAbstractActor {
         ballotW.add(this.writeValue);
         ballotW.add(t);
         ballotW.add(r);
+
         ActorRef auxip2 = createCounter(true); // create the auxiliary process n°2
+        this.auxiliaryProcessToStop.add(auxip2);
 
         WriteMsg messageW = new WriteMsg(ballotW, auxip2); //balloW [v,t, r]
 
@@ -74,7 +81,10 @@ public class WriterReader extends UntypedAbstractActor {
         this.r++;
         ArrayList<Integer> ballotR = new ArrayList<>();
         ballotR.add(this.r);
-        ActorRef auxip3 = createCounter(false); // create the auxiliary process n°1
+
+        ActorRef auxip3 = createCounter(false); // create the auxiliary process n°3
+        this.auxiliaryProcessToStop.add(auxip3);
+
         ReadMsg messageR = new ReadMsg(ballotR, auxip3);
 
         for (ActorRef i : processes.references) { //send messages to all processes
@@ -89,7 +99,8 @@ public class WriterReader extends UntypedAbstractActor {
         ballotW.add(ballot.get(1));
         ballotW.add(r);
 
-        ActorRef auxip4 = createCounter(false); // create the auxiliary process n°2
+        ActorRef auxip4 = createCounter(false); // create the auxiliary process n°4
+        this.auxiliaryProcessToStop.add(auxip4);
 
         WriteMsg messageW = new WriteMsg(ballotW, auxip4); //balloW [vm,tm, r]
 
@@ -105,7 +116,8 @@ public class WriterReader extends UntypedAbstractActor {
     public void onReceive(Object message) {
         if (!closing) {
             if (message instanceof LaunchMsg) {
-                int value = 2;
+                LaunchMsg m = (LaunchMsg) message;
+                int value = m.value;
                 write1(value);
 
             } else if (message instanceof AuxiliaryReadAnswerMsg) {
@@ -122,7 +134,7 @@ public class WriterReader extends UntypedAbstractActor {
                 AuxiliaryWriteAnswerMsg m = (AuxiliaryWriteAnswerMsg) message;
                 if (writing && m.fWrite) { //write2
                     log.info(id + " wrote " + this.writeValue + " (almost) everywhere with succes? " + m.ballot);
-                    UpdateMsg msg1 = new UpdateMsg(false, -1, r, t);
+                    UpdateMsg msg1 = new UpdateMsg(false, this.auxiliaryProcessToStop,-1, r, t);
                     parent.tell(msg1, self());
                     this.writing = false;
                     read1();
@@ -134,7 +146,7 @@ public class WriterReader extends UntypedAbstractActor {
                     } else {
                         log.info(id + " read " + this.readValue + " (almost) everywhere");
                     }
-                    UpdateMsg msg2 = new UpdateMsg(true, this.readValue, r, t);
+                    UpdateMsg msg2 = new UpdateMsg(true, this.auxiliaryProcessToStop,this.readValue, r, t);
                     parent.tell(msg2, self());
                     this.closing = true;
                 }
