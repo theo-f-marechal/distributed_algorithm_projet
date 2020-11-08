@@ -124,6 +124,9 @@ public class Process extends UntypedAbstractActor {
                     if (count < M){
                         this.Launch();
                     }
+                    else {
+                        //add a way to inform the main that this actor is done working
+                    }
                 }
             }
         }
