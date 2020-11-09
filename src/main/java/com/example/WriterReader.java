@@ -55,7 +55,7 @@ public class WriterReader extends UntypedAbstractActor {
         for (ActorRef i : processes.references) { //send msg to all process
             if (i == self())
                 continue;
-            i.tell(messageR, self()); //send as auxip1
+            i.tell(messageR, self());
         }
     }
     public void write2(ArrayList<Integer> ballot) { // ballot [vm,tm]
@@ -91,7 +91,7 @@ public class WriterReader extends UntypedAbstractActor {
         for (ActorRef i : processes.references) { //send messages to all processes
             if (i == self())
                 continue;
-            i.tell(messageR, self()); // send a message with the auxiliary process ref
+            i.tell(messageR, self());
         }
     }
     public void read2(ArrayList<Integer> ballot){ // ballot [vm,tm]

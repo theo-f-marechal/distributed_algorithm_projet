@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public class WriteMsg implements Serializable {
         private static final long serialVersionUID = 1L;
-        public ArrayList<Integer> ballot; //[
+        public ArrayList<Integer> ballot;
         public ActorRef auxi;
 
         public WriteMsg(ArrayList<Integer> ballot, ActorRef auxi) {

@@ -76,7 +76,7 @@ public class Counter extends UntypedAbstractActor {
             this.WriteAnswers.add(ballot);
             if (this.WriteAnswers.size() > (N / 2) ) {
                 boolean newballot = WriteAnswerValidate();
-                parent.tell(new AuxiliaryWriteAnswerMsg(newballot, this.fWrite), self()); // wait
+                parent.tell(new AuxiliaryWriteAnswerMsg(newballot, this.fWrite), self()); // end wait
             }
         }
     }

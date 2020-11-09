@@ -16,8 +16,8 @@ public class AkkaQuickstartTest {
     //#test
     @Test
     public void testGreeterActorSendingOfGreeting() {
-        TestProbe<Greeter.Greeted> testProbe = testKit.createTestProbe();
-        ActorRef<Greeter.Greet> underTest = testKit.spawn(Greeter.create(), "greeter");
+        TestProbe<WriterReader.Receive> testProbe = testKit.createTestProbe();
+        ActorRef<WriterReader> underTest = testKit.spawn(new WriterReader(), "greeter");
         underTest.tell(new Greeter.Greet("Charles", testProbe.getRef()));
         testProbe.expectMessage(new Greeter.Greeted("Charles", underTest));
     }

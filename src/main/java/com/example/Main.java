@@ -9,8 +9,8 @@ import java.util.ArrayList;
 
 public class Main {
 
-  private static int [] tab_val = {3,10,50,100};
-  private static int nb_loop = 4;
+  private static int [] tab_val = {3,10,100};
+  private static int nb_loop = 3;
 
   public static void main(String[] args) {
     for (int y = 0; y < nb_loop; y++) {
